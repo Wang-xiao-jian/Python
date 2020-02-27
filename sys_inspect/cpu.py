@@ -2,6 +2,7 @@
 
 import csv
 import time
+import os
 
 import psutil
 import pyecharts
@@ -24,15 +25,15 @@ def get_cpu_percent():
     rows = [cur_time, cpu_res_turtle]
     rows += percpu
 
-    with open(filename, 'r+', newline='') as fw:
-        r = csv.reader(fw, dialect='excel')
-        if len(list(r)) == 0:
-            w = csv.writer(fw, dialect='excel')
+    if os.path.exists(filename):
+        with open(filename, 'a+', newline='') as f:
+            w = csv.writer(f, dialect='excel')
+            w.writerow(rows)
+    else:
+        with open(filename, 'a+', newline='') as f:
+            w = csv.writer(f, dialect='excel')
             w.writerow(get_csvhead())
-
-    with open(filename, 'a+', newline='') as f:
-        w = csv.writer(f, dialect='excel')
-        w.writerow(rows)
+            w.writerow(rows)
 
 def generate_html():
     xlist = []
