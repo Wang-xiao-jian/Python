@@ -5,29 +5,34 @@ import time
 
 import psutil
 import pyecharts
-from pyecharts.charts import Line
 from pyecharts import options as opts
+from pyecharts.charts import Line
 
-head = ['time', '%cpu']
 today = time.strftime('%F', time.localtime(time.time()))
 filename = today + '_cpu.csv'
 
-def init():
-    with open(filename, 'w', newline='') as f:
+def get_csvhead():
+    res = ['time', 'turtle']
+    for i in range(1, psutil.cpu_count() + 1):
+        res.append('core%d'%i)
+    return res
+
+def get_cpu_percent():
+    cur_time = time.strftime('%T', time.localtime(time.time()))
+    cpu_res_turtle = psutil.cpu_percent()
+    percpu = psutil.cpu_percent(percpu=True)
+    rows = [cur_time, cpu_res_turtle]
+    rows += percpu
+
+    with open(filename, 'r+', newline='') as fw:
+        r = csv.reader(fw, dialect='excel')
+        if len(list(r)) == 0:
+            w = csv.writer(fw, dialect='excel')
+            w.writerow(get_csvhead())
+
+    with open(filename, 'a+', newline='') as f:
         w = csv.writer(f, dialect='excel')
-        w.writerow(head)
-
-def get_cpu_persec():
-    count = 0
-    while count < 60:
-        cur_time = time.strftime('%T', time.localtime(time.time()))
-        cpu_res = psutil.cpu_percent()
-        with open(filename, 'a+', newline='') as f:
-            w = csv.writer(f, dialect='excel')
-            w.writerow([cur_time, cpu_res])
-        time.sleep(1)
-        count += 1
-
+        w.writerow(rows)
 
 def generate_html():
     xlist = []
@@ -35,21 +40,28 @@ def generate_html():
 
     with open(filename, 'r') as f:
         r = csv.reader(f, dialect='excel')
-        for row in r:
-            xlist.append(row[0])
-            ylist.append(row[1])
-        xlist.remove(xlist[0])
-        ylist.remove(ylist[0])
+        content = list(r)
+        xlist.append(content[0][0])
+        for i in range(1, len(content[0])):
+            ylist.append([content[0][i]])
+        for i in range(1, len(content)):
+            xlist.append(content[i][0])
+            for j in range(1, len(content[i])):
+                ylist[j-1].append(content[i][j])
     
-    line1 = Line()
-    line1.add_xaxis(xlist)
-    line1.add_yaxis('ip1',ylist)
-    line1.set_global_opts(title_opts=opts.TitleOpts('CPU实时监测'))
-    line1.render(today + '.html')
+    line = Line()
+    line.add_xaxis(xlist[1:])
+    for i in range(len(ylist)):
+        line.add_yaxis(ylist[i][0], ylist[i][1:])
+    line.set_global_opts(title_opts=opts.TitleOpts('CPU实时监测'))
+    line.set_global_opts(xaxis_opts = opts.AxisOpts(name = xlist[0]))
+    line.set_global_opts(yaxis_opts = opts.AxisOpts(name = 'percent'))
+
+    line.render(today + '_cpu.html')
+    
 
 def main():
-    # init()
-    # get_cpu_persec()
+    get_cpu_percent()
     generate_html()
 
 
