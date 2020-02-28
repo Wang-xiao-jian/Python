@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 
 import csv
 import time
@@ -7,24 +7,18 @@ import os
 import psutil
 import pyecharts
 from pyecharts import options as opts
-from pyecharts.charts import Line
+from pyecharts.charts import Bar
 
 today = time.strftime('%F', time.localtime(time.time()))
-filename = today + '_cpu.csv'
+filename = today + '_la.csv'
 
-def get_csvhead():
-    res = ['time', 'turtle']
-    for i in range(1, psutil.cpu_count() + 1):
-        res.append('core%d'%i)
-    return res
+head = ['time', 'load_1', 'load_5', 'load_15']
 
-def get_cpu_percent():
-    cur_time = time.strftime('%T', time.localtime(time.time()))
-    cpu_res_turtle = psutil.cpu_percent()
-    percpu = psutil.cpu_percent(percpu=True)
-    rows = [cur_time, cpu_res_turtle]
-    rows += percpu
-    return rows
+def get_load_average():
+    now = time.strftime('%T', time.localtime(time.time()))
+    res = psutil.getloadavg()
+    ret = [now] + list(res)
+    return ret
 
 def input_csv(data):
     if os.path.exists(filename):
@@ -34,7 +28,7 @@ def input_csv(data):
     else:
         with open(filename, 'a+', newline='') as f:
             w = csv.writer(f, dialect='excel')
-            w.writerow(get_csvhead())
+            w.writerow(head)
             w.writerow(data)
 
 def generate_html():
@@ -52,23 +46,17 @@ def generate_html():
             for j in range(1, len(content[i])):
                 ylist[j-1].append(content[i][j])
     
-    line = Line()
-    line.add_xaxis(xlist[1:])
+    bar = Bar()
+    bar.add_xaxis(xlist[1:])
     for i in range(len(ylist)):
-        line.add_yaxis(ylist[i][0], ylist[i][1:])
-    line.set_global_opts(title_opts=opts.TitleOpts('CPU实时监测'))
-    line.set_series_opts(markpoint_opts=opts.MarkPointItem(type_=['min', 'max']))
-    line.set_global_opts(xaxis_opts = opts.AxisOpts(name = xlist[0]))
-    line.set_global_opts(yaxis_opts = opts.AxisOpts(name = 'percent'))
-
-    line.render(today + '_cpu.html')
-    
+        bar.add_yaxis(ylist[i][0], ylist[i][1:])
+    bar.set_global_opts(title_opts=opts.TitleOpts(title="平均负载", subtitle="1分钟,5分钟,15分钟"))
+    bar.render(today + '_la.html')
 
 def main():
-    data = get_cpu_percent()
-    input_csv(data)
+    res = get_load_average()
+    input_csv(list(res))
     generate_html()
-
 
 if __name__ == "__main__":
     main()
